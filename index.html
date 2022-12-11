@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <h1>SHIPMENT PATH</h1>
+    <title>geomap-project</title>
+    <script src="d3.js"></script>
+    <script src="https://d3js.org/topojson.v2.min.js"></script>
+    <style>
+        #container {
+            width: 90vw;
+            height: 120vh;
+        }
+
+        #canvas {
+            width: 100vw;
+            height: 80vh;
+            background-color: rgb(169, 231, 238);
+        }
+
+        #tooltip {
+            margin-left: 40vw;
+            width: 200px;
+            height: 80px;
+        }
+        h1{
+            text-align: center;
+        }
+        .Geospatial_button {
+            border-radius: 4px;
+            background-color: #f4511e;
+            border: none;
+            color: #FFFFFF;
+            text-align: center;
+            font-size: 28px;
+            padding: 20px;
+            width: 300px;
+            cursor: pointer;
+        }
+
+        .Geospatial_button span {
+            cursor: pointer;
+            display: inline-block;
+            position: relative;
+        }
+
+        .Geospatial_button span:after {
+            content: '\00bb';
+            position: absolute;
+            opacity: 0;
+            top: 0;
+            right: -20px;
+            transition: 0.5s;
+        }
+
+        .Geospatial_button:hover span {
+            padding-right: 25px;
+        }
+
+        .Geospatial_button:hover span:after {
+            opacity: 1;
+            right: 0;
+        }
+
+        .BarGraph_button {
+            border-radius: 4px;
+            background-color: #f4511e;
+            border: none;
+            color: #FFFFFF;
+            text-align: center;
+            font-size: 28px;
+            padding: 20px;
+            width: 300px;
+            cursor: pointer;
+        }
+
+        .BarGraph_button span {
+            cursor: pointer;
+            display: inline-block;
+            position: relative;
+        }
+
+        .BarGraph_button span:after {
+            content: '\00bb';
+            position: absolute;
+            opacity: 0;
+            top: 0;
+            right: -20px;
+            transition: 0.5s;
+        }
+
+        .BarGraph_button:hover span {
+            padding-right: 25px;
+        }
+
+        .BarGraph_button:hover span:after {
+            opacity: 1;
+            right: 0;
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="Geospatial_button" onclick="window.location.href='index2.html'"><span>GEOSPATIAL MAP</span></button>
+    <button class="BarGraph_button" onclick="window.location.href='index3.html'" ><span>BAR GRAPH</span></button>
+
+
+    <div id="tooltip"></div>
+    <div id="container">
+        <svg id="canvas" viewBox="0 0 1000 800">
+
+        </svg>
+    </div>
+    <script>
+        let svg = d3.select('svg');
+        let shipment_data = "Case Study - Shipment Numbers Case Study.csv"
+        let geoJson = "airports_data.json"
+
+        Promise.all(
+            [
+                d3.json(geoJson),
+                d3.json("world-countries.json"),
+                d3.csv(shipment_data)], d3.autoType()).then(main)
+        function main(data) {
+
+            let airports_Data = data[2]
+
+            // format data to MATCH the map data with IATA code
+            airports_Data = airports_Data.map(
+                d => {
+                    d.IATA_origin = d['(Air)Port of Origin'].split("-")[0]
+                    d.IATA_destination = d['(Air)Port of Destination'].split("-")[0]
+                    return d
+                }
+            )
+            // group the dataset by IATA_origin
+            let airPortGroups = d3.group(airports_Data, d => d.IATA_origin)
+            let airPorts_Dest = d3.group(airports_Data, d => d.IATA_destination)
+
+
+            //airPortGroups = Array.from(airPortGroups)
+            const allAirports_in_dataset = Array.from(airPortGroups.keys())
+            const all_airport_dest = Array.from(airPorts_Dest.keys())
+
+            // just keep the airports in the dataset
+            const airPort_Points = data[0].filter(d => allAirports_in_dataset.includes(d.iata_code))
+            const airport_dest_pt = data[0].filter(d => all_airport_dest.includes(d.iata_code))
+
+            //--- new --- make a dataset for source and destination points
+
+            let source_destination = d3.flatGroup(airports_Data, d => d.IATA_origin, d => d.IATA_destination)
+            let get_geo_locations_of_airports = Object.fromEntries(d3.flatGroup(airPort_Points, d => d.iata_code))
+
+
+            const line_points = source_destination.map(d => {
+                if ((d[0] in get_geo_locations_of_airports) && (d[1] in get_geo_locations_of_airports)) {
+                    return {
+                        type: "LineString",
+                        "source_name": d[0],
+                        "dest_name": d[1],
+                        "coordinates": [
+                            [
+                                get_geo_locations_of_airports[d[0]][0]['_geoloc']['lng'],
+                                get_geo_locations_of_airports[d[0]][0]['_geoloc']['lat'],
+                            ],
+                            [
+                                get_geo_locations_of_airports[d[1]][0]['_geoloc']['lng'],
+                                get_geo_locations_of_airports[d[1]][0]['_geoloc']['lat'],
+                            ]
+
+                        ]
+                    }
+                }
+            }).filter(d => d !== undefined)
+
+            console.log()
+
+
+
+            const work_countries_geoJSON = topojson.feature(data[1], data[1].objects.countries1);
+
+            const projection = d3.geoMercator()
+                .fitExtent([[0, 0], [1000, 800]], work_countries_geoJSON)
+
+            const geoPathGen = d3.geoPath().projection(projection)
+
+            let mapCanvas = svg.append('g')
+            // add map
+            mapCanvas.selectAll()
+                .data(work_countries_geoJSON.features)
+                .join("path")
+                .attr("d", geoPathGen)
+                .attr("stroke", "black")
+                .attr("fill", "none")
+
+
+            //add dots
+            mapCanvas.selectAll()
+                .data(line_points)
+                .enter()
+                .append("path")
+                .attr("d", geoPathGen)
+                .attr("stroke", "blue")
+                .attr("stroke-width", "2px")
+                .attr("fill", "none")
+
+                .on("mouseover", (event, d) => {
+
+                    const node_data = d3.select(event.target).data()[0]
+                    // check the console for data
+                    const search_result = airPortGroups.get(node_data.iata_code)
+                    d3.select("#tooltip").html(`
+                                    <div>${node_data.name}</div>
+                                    <div>${node_data.iata_code}</div>
+                                    <div>Number of shipments: ${search_result.length}</div>
+                                                `)
+                })
+
+
+        }
+
+    </script>
+</body>
+
+</html>

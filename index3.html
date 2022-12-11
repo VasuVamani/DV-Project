@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+  <h1>BAR GRAPH BTW DESTINATION COUNTRY AND SHIPMENT TYPE</h1>
+  <style>
+      #container {
+          width: 90vw;
+          height: 120vh;
+      }
+
+      #canvas {
+          width: 100vw;
+          height: 80vh;
+          background-color: rgb(169, 231, 238);
+      }
+
+      #tooltip {
+          margin-left: 40vw;
+          width: 200px;
+          height: 80px;
+      }
+      h1{
+          text-align: center;
+      }
+      .Geospatial_button {
+          border-radius: 4px;
+          background-color: #f4511e;
+          border: none;
+          color: #FFFFFF;
+          text-align: center;
+          font-size: 28px;
+          padding: 20px;
+          width: 300px;
+          cursor: pointer;
+      }
+
+      .Geospatial_button span {
+          cursor: pointer;
+          display: inline-block;
+          position: relative;
+      }
+
+      .Geospatial_button span:after {
+          content: '\00bb';
+          position: absolute;
+          opacity: 0;
+          top: 0;
+          right: -20px;
+          transition: 0.5s;
+      }
+
+      .Geospatial_button:hover span {
+          padding-right: 25px;
+      }
+
+      .Geospatial_button:hover span:after {
+          opacity: 1;
+          right: 0;
+      }
+
+      .Geo_button {
+          border-radius: 4px;
+          background-color: #f4511e;
+          border: none;
+          color: #FFFFFF;
+          text-align: center;
+          font-size: 28px;
+          padding: 20px;
+          width: 300px;
+          cursor: pointer;
+      }
+
+      .Geo_button span {
+          cursor: pointer;
+          display: inline-block;
+          position: relative;
+      }
+
+      .Geo_button span:after {
+          content: '\00bb';
+          position: absolute;
+          opacity: 0;
+          top: 0;
+          right: -20px;
+          transition: 0.5s;
+      }
+
+      .Geo_button:hover span {
+          padding-right: 25px;
+      }
+
+      .Geo_button:hover span:after {
+          opacity: 1;
+          right: 0;
+      }
+  </style>
+</head>
+
+<body>
+
+  <button class="Geospatial_button" onclick="window.location.href='index2.html'"><span>GEOSPATIAL MAP</span></button>
+  <button class="Geo_button" onclick="window.location.href='index.html'" ><span>GEO MAP</span></button>
+
+
+
+<script src="https://d3js.org/d3.v4.js"></script>
+<div id="my_dataviz"></div>
+<!-- <div id="tooltip"></div> -->
+
+<script>
+
+var margin = {top: 10, right: 30, bottom: 90, left: 40},
+    width = 1000 - margin.left - margin.right,
+    height = 800 - margin.top - margin.bottom;
+
+
+var svg = d3.select("#my_dataviz")
+  .append("svg")
+    .attr("width", width + margin.left + margin.right)
+
+    .attr("height", height + margin.top + margin.bottom)
+    
+  .append("g")
+    .attr("transform",
+          "translate(" + margin.left + "," + margin.top + ")");
+
+
+d3.csv("shipment_lineplot2.csv", function(data) {
+
+//X-Axis
+var x = d3.scaleBand()
+  .range([ 0, width ])
+  .domain(data.map(function(d) { return d.DestinationCountry; }))
+  .padding(0.2);
+svg.append("g")
+  .attr("transform", "translate(0," + height + ")")
+  .call(d3.axisBottom(x))
+  .selectAll("text")
+    .attr("transform", "translate(-10,0)rotate(-45)")
+    .style("text-anchor", "end");
+
+// Add Y axis
+var y = d3.scaleLinear()
+  .domain([0, 4])
+  .range([ height, 0]);
+svg.append("g")
+  .call(d3.axisLeft(y));
+
+
+//tooltip:
+
+// const tooltip=d3.select("#tooltip");
+
+
+
+// Bars
+svg.selectAll("mybar")
+  .data(data)
+  .enter()
+  .append("rect")
+    .attr("x", function(d) { return x(d.DestinationCountry); })
+    .attr("width", x.bandwidth())
+    .attr("fill", "#69b3a2")
+
+    .attr("height", function(d) { return height - y(0); }) 
+    .attr("y", function(d) { return y(0); })
+
+
+
+
+
+
+  
+// Animation
+svg.selectAll("rect")
+  .transition()
+  .duration(800)
+  .attr("y", function(d) { return y(d.Product); })
+  .attr("height", function(d) { return height - y(d.Product); })
+  .delay(function(d,i){console.log(i) ; return(i*1)})
+
+
+//mouse-enter function:
+
+// .on("mouseenter", (m,d)=>{
+//   tooltip.html(d['Product'])
+// })
+
+svg.append("text").attr("x", 780).attr("y", 10).text("1.Air Freight").style("font-size", "20px").attr("alignment-baseline","middle")
+svg.append("text").attr("x", 780).attr("y", 30).text("2.Ocean Freight LCL").style("font-size", "20px").attr("alignment-baseline","middle")
+svg.append("text").attr("x", 780).attr("y", 50).text("3.Ocean Freight FCL").style("font-size", "20px").attr("alignment-baseline","middle")
+})
+
+</script>
